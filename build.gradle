@@ -1,0 +1,98 @@
+// 根据传进来的profile系统属性来打包.例如: ./gradlew clean bootJar -x test -Dprofile=prod
+plugins { //用于配置项目所需的插件
+    id 'java'
+    id 'war'
+
+    id 'org.springframework.boot' version '2.7.12'
+    id 'io.spring.dependency-management' version '1.0.15.RELEASE' //Spring的依赖管理插件，用于管理项目的依赖。确保所有模块和库使用兼容的版本
+}
+
+
+def profileName = System.getProperty("profile") ?: "dev"
+if(profileName==null) {
+    throw new BuildCancelledException("must pass The environment variable 'profile'\r\n"
+            +"For example: gradlew clean build -i -x test --no-daemon -Dprofile=dev")
+}
+
+processResources {//该配置的作用是通过定义包含规则，指定哪些资源文件应该被复制到构建输出目录（通常是build/resources/main）中。这些资源文件在打包和部署应用时会被包含在内。
+    include '**/public/**'
+    include '**/static/**'
+    include '**/templates/**'
+    include '**/i18n/**'
+
+    include '**/resources/**'
+    include '**/*.yml'
+    include '**/*.xml'
+    include 'ESAPI.properties'
+    include 'validation.properties'
+
+    include { FileTreeElement details ->
+        details.isDirectory()==true || details.file.name.contains("-${profileName}.")  /* 根据传入的profileName系统属性来过滤 */
+    }
+}
+
+
+group = 'com.tzy'
+version = "0.0.1-${profileName}"
+sourceCompatibility = '17' //确保项目源代码与指定Java版本兼容。
+targetCompatibility = '17' //确保编译后的字节码与指定Java版本兼容。
+
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'  //编码设置：确保源代码文件和编译生成的类文件使用UTF-8编码格式，避免字符集问题。
+[compileJava, compileTestJava]*.options*.compilerArgs << "-parameters" << "-Xlint:deprecation"  //编译参数：添加-parameters和-Xlint:deprecation参数，确保方法参数名在字节码中保留，并对弃用API使用发出警告。
+[compileJava, compileTestJava]*.options*.deprecation = true //弃用警告
+
+
+configurations { //定义和配置项目的依赖配置
+    compileOnly { //表示这些依赖在编译时可用，但不会被打包到最终的构建产物中（如JAR文件）
+        extendsFrom annotationProcessor
+    }
+}
+
+
+repositories { //仓库配置
+    mavenLocal()
+    maven { url "https://maven.aliyun.com/nexus/content/groups/public/" }  //优先使用阿里的镜像
+    mavenCentral()
+}
+
+
+dependencies {
+    /**
+     * implementation：在编译和运行时都有效，并且会被包含在最终的构建产物中。
+     * compileOnly：仅在编译时有效，不会被包含在最终的构建产物（如JAR文件）中。
+     *              比如注解处理器（Annotation Processors）或测试用的依赖。
+     * annotationProcessor：Gradle中用于配置注解处理器（Annotation Processors）依赖的一种特殊依赖配置
+     * providedRuntime：配置表示在编译时有效，但在运行时由外部环境提供，不会被打包到最终的产物中。
+     */
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+
+    //防止XSS攻击
+    implementation "org.owasp.esapi:esapi:2.5.1.0"
+
+    //swagger
+    implementation 'com.github.xiaoymin:knife4j-openapi3-spring-boot-starter:4.1.0'
+
+
+
+    //引入AOP
+    implementation "org.springframework.boot:spring-boot-starter-aop"
+    implementation group: 'cn.hutool', name: 'hutool-all', version: '5.8.4'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+
+
