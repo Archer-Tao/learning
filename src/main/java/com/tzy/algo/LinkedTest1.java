@@ -1,8 +1,8 @@
 package com.tzy.algo;
 
 
-import cn.hutool.core.util.ObjectUtil;
 import com.tzy.entity.ListNode;
+import org.apache.commons.lang3.ObjectUtils;
 
 import java.util.PriorityQueue;
 
@@ -21,7 +21,7 @@ import java.util.PriorityQueue;
  * @author: Tao
  * @create: 2024-06-24 10:02
  **/
-public class LinkedList {
+public class LinkedTest1 {
 
 
     /**
@@ -99,7 +99,7 @@ public class LinkedList {
         ListNode lt = left;
         ListNode gt = right;
 
-        while (ObjectUtil.isNotEmpty(cur)) {
+        while (ObjectUtils.isNotEmpty(cur)) {
             if (cur.val < x) {
                 lt.next = cur;
                 lt = lt.next;
